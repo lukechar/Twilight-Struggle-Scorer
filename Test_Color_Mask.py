@@ -4,7 +4,7 @@ import time
 import tools
 import imutils
 
-img = cv2.imread("test_images/test3.jpg")
+img = cv2.imread("test_images/test.jpg")
 height, width, channels = img.shape
 
 img_wo_tracks = img.copy()
@@ -46,12 +46,14 @@ cv2.waitKey(0)
 area_min = 3000
 area_max = 5000
 
+square_tolerance = 0.2
+
 # Count Red control tokens
 for c in contours_red:
     c_area = cv2.contourArea(c)
     if c_area < area_min or c_area > area_max:
         continue
-    if sd.isSquare(c, tol=0.5):
+    if sd.isSquare(c, tol=square_tolerance):
         cv2.drawContours(img, [c], -1, (0,255,0), 3)
         ussr_controlled += 1
     else:
@@ -62,7 +64,7 @@ for c in contours_blue:
     c_area = cv2.contourArea(c)
     if c_area < area_min or c_area > area_max:
         continue
-    if sd.isSquare(c, tol=0.5):
+    if sd.isSquare(c, tol=square_tolerance):
         cv2.drawContours(img, [c], -1, (0,255,0), 3)
         us_controlled += 1
     else:
