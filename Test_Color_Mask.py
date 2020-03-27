@@ -3,76 +3,113 @@ import numpy as np
 import time
 import tools
 import imutils
+import os
 
-img = cv2.imread("test_images/test.jpg")
-height, width, channels = img.shape
+images = os.listdir("test_images/")
+# images = ["test9.jpg"]
 
-img_wo_tracks = img.copy()
+failed = []
 
-# Draw rectangle to zero turn record and space track
-cv2.rectangle(img_wo_tracks, (int(width * 0.6), 0), (width, int(height * 0.33)), (255,0,0), -1)
+red_means = []
 
-# Draw rectangle to zero military ops track
-cv2.rectangle(img_wo_tracks, (int(width * 0.275), int(height * 0.815)), (int(width * 0.465), int(height)), (255,0,0), -1)
+for image_name in images:
+    img = cv2.imread("test_images/{}".format(image_name))
+    height, width, channels = img.shape
 
-imMan = tools.ImageManipulations(img_wo_tracks)
-red_masked = imMan.apply_color_mask((175, 5), (110, 255), (0, 255))
-blue_masked = imMan.apply_color_mask((100, 110), (110, 255), (0, 255))
+    img_wo_tracks = img.copy()
 
-sd = tools.ShapeDetector()
+    # Draw rectangle to zero turn record and space track
+    cv2.rectangle(img_wo_tracks, (int(width * 0.6), 0), (width, int(height * 0.3)), (0,0,0), -1)
 
-ussr_controlled = 0
-us_controlled = 0
+    # Draw rectangle to zero military ops track
+    cv2.rectangle(img_wo_tracks, (int(width * 0.275), int(height * 0.83)), (int(width * 0.5), int(height)), (0,0,0), -1)
 
-# Apply thresholding with mask result
-red_thresh = cv2.threshold(red_masked, 120, 255, cv2.THRESH_BINARY)[1]
-blue_thresh = cv2.threshold(blue_masked, 0, 255, cv2.THRESH_BINARY)[1]
+    # Draw rectangle to zero action round track
+    cv2.rectangle(img_wo_tracks, (0, 0), (int(width * 0.365), int(height * .2)), (0,0,0), -1)
 
-# Convert to grayscale by keeping only the (V)alue channel
-red_gs = cv2.split(red_thresh)[2]
-blue_gs = cv2.split(blue_thresh)[2]
+    # cv2.imshow("Rects", cv2.resize(img_wo_tracks, (1280, 960)))
+    # cv2.waitKey(0)
 
-# Find coutours
-cnts_red = cv2.findContours(red_gs, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-contours_red = imutils.grab_contours(cnts_red)
-cnts_blue = cv2.findContours(blue_gs, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-contours_blue = imutils.grab_contours(cnts_blue)
+    imMan = tools.ImageManipulations(img_wo_tracks)
+    red_masked = imMan.apply_color_mask((0, 7), (140, 255), (140, 255))
+    blue_masked = imMan.apply_color_mask((100, 110), (180, 255), (140, 255))
 
-cv2.imshow("thresh", cv2.resize(red_gs, (1280, 960)))
-cv2.waitKey(0)
-cv2.imshow("thresh", cv2.resize(blue_gs, (1280, 960)))
-cv2.waitKey(0)
+    sd = tools.ShapeDetector()
 
-area_min = 3000
-area_max = 5000
+    ussr_controlled = 0
+    us_controlled = 0
 
-square_tolerance = 0.2
+    # Convert to grayscale by keeping only the (V)alue channel
+    red_gs = cv2.split(red_masked)[2]
+    blue_gs = cv2.split(blue_masked)[2]
 
-# Count Red control tokens
-for c in contours_red:
-    c_area = cv2.contourArea(c)
-    if c_area < area_min or c_area > area_max:
-        continue
-    if sd.isSquare(c, tol=square_tolerance):
-        cv2.drawContours(img, [c], -1, (0,255,0), 3)
-        ussr_controlled += 1
-    else:
-        cv2.drawContours(img, [c], -1, (255,0,0), 3)
+    # Apply thresholding with mask result
+    red_thresh = cv2.threshold(red_gs, 110, 255, cv2.THRESH_BINARY)[1]
+    blue_thresh = cv2.threshold(blue_gs, 0, 255, cv2.THRESH_BINARY)[1]
+    
 
-# Count Blue control tokens
-for c in contours_blue:
-    c_area = cv2.contourArea(c)
-    if c_area < area_min or c_area > area_max:
-        continue
-    if sd.isSquare(c, tol=square_tolerance):
-        cv2.drawContours(img, [c], -1, (0,255,0), 3)
-        us_controlled += 1
-    else:
-        cv2.drawContours(img, [c], -1, (0,0,255), 3)
+    # Find coutours
+    cnts_red = cv2.findContours(red_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    contours_red = imutils.grab_contours(cnts_red)
+    cnts_blue = cv2.findContours(blue_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    contours_blue = imutils.grab_contours(cnts_blue)
 
-# Display Results
-cv2.putText(img, "USSR Controlled: {}".format(ussr_controlled), (0, int(height * 0.2)), cv2.FONT_HERSHEY_PLAIN, 5, (255,255,255), thickness=5)
-cv2.putText(img, "US Controlled: {}".format(us_controlled), (0, int(height * 0.24)), cv2.FONT_HERSHEY_PLAIN, 5, (255,255,255), thickness=5)
+    red_gs_color = cv2.cvtColor(red_gs, cv2.COLOR_GRAY2BGR)
+    blue_gs_color = cv2.cvtColor(blue_gs, cv2.COLOR_GRAY2BGR)
 
-cv2.imshow("final", cv2.resize(img, (1280, 960)))
-cv2.waitKey(0)
+    cv2.drawContours(red_gs_color, contours_red, -1, (0,0,255), 5)
+    cv2.drawContours(blue_gs_color, contours_blue, -1, (255,0,0), 5)
+
+    area_min = 3000
+    area_max = 4500
+
+    square_tolerance = 0.2
+    square_sides_tolerance = 0
+    sqaure_center_of_mass_tolerance = 40
+    square_side_length_tolerance = 60
+
+    # Count Red control tokens
+    for c in contours_red:
+        c = cv2.convexHull(c)
+        c_area = cv2.contourArea(c)
+        if c_area < area_min or c_area > area_max:
+            continue
+        if sd.isSquare(c, tol=square_tolerance, sides_tol=square_sides_tolerance, center_of_mass_tol=sqaure_center_of_mass_tolerance, side_length_tol=square_side_length_tolerance):
+            cv2.drawContours(img, [c], -1, (0,255,0), 3)   
+            ussr_controlled += 1
+        else:
+            cv2.drawContours(img, [c], -1, (0,0,255), 3)  # pass area, fail square --> red      
+
+    # Count Blue control tokens
+    for c in contours_blue:
+        c = cv2.convexHull(c)
+        c_area = cv2.contourArea(c)
+        if c_area < area_min or c_area > area_max:
+            continue
+        if sd.isSquare(c, tol=square_tolerance, sides_tol=square_sides_tolerance, center_of_mass_tol=sqaure_center_of_mass_tolerance, side_length_tol=square_side_length_tolerance):
+            # if imMan.check_mean_hue_of_contour(c, 106, 10)[0]:
+            cv2.drawContours(img, [c], -1, (0,255,0), 3)
+            us_controlled += 1
+        else:
+            cv2.drawContours(img, [c], -1, (0,0,255), 3)  # pass area, fail square --> red
+
+    # Display Results
+    cv2.rectangle(img, (0, int(height * 0.1)), (int(width * 0.25), int(height * 0.35)), (0,255,0), -1)
+    cv2.putText(img, "USSR Controlled: {}".format(ussr_controlled), (0, int(height * 0.2)), cv2.FONT_HERSHEY_PLAIN, 5, (0,0,255), thickness=5)
+    cv2.putText(img, "US Controlled: {}".format(us_controlled), (0, int(height * 0.24)), cv2.FONT_HERSHEY_PLAIN, 5, (255,0,0), thickness=5)
+
+    if ussr_controlled == us_controlled == 14:
+        print("PASS:")
+        # cv2.imshow("final - PASS", cv2.resize(img, (1280, 960)))
+        # cv2.waitKey(0)
+    else: 
+        print("FAIL:")
+        failed.append(image_name)
+        cv2.imshow("final - FAIL", cv2.resize(img, (1280, 960)))
+        cv2.waitKey(0)
+    print(ussr_controlled, us_controlled)
+print()
+if len(failed) > 0:
+    print(f"Failed: {failed}")
+else:
+    print("All pass!")
