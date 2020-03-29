@@ -5,24 +5,38 @@ class ShapeDetector:
     def __init__(self, *args, **kwargs):
         pass
 
+    # Get center of contour
+    # @param c - the contour to get the center of using bounding rectangle
+    # @return [2 tuple of ints] - the center of the contour using bounding rectangle
+    def get_contour_center(self, c):
+        (x, y, w, h) = cv2.boundingRect(c)
+        return (x + (w // 2), y + (h // 2))
+
+    # Check if contour is rectangle
+    # @param c - the contour to check
+    # @return [bool] - True if contour is a rectangle, False otherwise
     def isRectangle(self, c):
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.1 * peri, True)
         return len(approx) == 4
 
-    def isSquare(self, c, tol=0.05, sides_tol=0, center_of_mass_tol=40, side_length_tol=5):
+    # Check if contour is square
+    # @param c - the contour to check
+    # @return [bool] - True if contour is a square, False otherwise
+    def isSquare(self, c, tol, center_of_mass_tol, side_length_tol):
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.1 * peri, True)
-        if len(approx) > 4 + sides_tol or len(approx) < 4 - sides_tol:
+        if len(approx) != 4:
             return False
         side_sum = 0
         side_lengths = []
         for vertex in range(4):
             for v in range(vertex + 1, 4):
                 dist = np.linalg.norm(approx[vertex][0] - approx[v][0])
-                side_sum += dist
                 side_lengths.append(dist)
         side_lengths = sorted(side_lengths)[:4]
+        for s in side_lengths:
+            side_sum += s
         avg_side_length = side_sum / len(side_lengths)
         for l in side_lengths:
             if l < avg_side_length - side_length_tol or l > avg_side_length + side_length_tol:
