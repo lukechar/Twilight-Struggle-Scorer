@@ -12,6 +12,10 @@ class ShapeDetector:
         (x, y, w, h) = cv2.boundingRect(c)
         return (x + (w // 2), y + (h // 2))
 
+    def get_contour_aspect_ratio(self, c):
+        (x, y, w, h) = cv2.boundingRect(c)
+        return w / float(h)
+
     # Check if contour is rectangle
     # @param c - the contour to check
     # @return [bool] - True if contour is a rectangle, False otherwise
